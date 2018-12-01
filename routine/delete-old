@@ -1,0 +1,5 @@
+#!/bin/bash
+find /tmp -mtime +10 -name "GeoLiteCity.dat.gz.*" -exec rm -f {} \;
+#find /var/log -mtime +30 -name "*.bz2" -exec rm -f {} \;
+find /var/log -mtime +30 -name "*.bz2" -exec rm -f {} \;
+find /srv/ftp/web/backups -mtime +180 \( -name "*.sql.gz" -o -name "*.tgz" \) -exec rm -f {} \;

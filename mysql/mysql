@@ -1,0 +1,23 @@
+#
+groupadd mysql
+useradd -r -g mysql mysql
+#
+cd /usr/src/
+wget http://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.6/mysql-5.6.13.tar.gz
+tar zxvf mysql-5.6.13.tar.gz
+cd mysql-5.6.13
+cmake -DBUILD_CONFIG=mysql_release .
+make
+make install
+#
+cd /usr/local/mysql
+chown -R mysql .
+chgrp -R mysql .
+scripts/mysql_install_db --user=mysql
+chown -R root .
+chown -R mysql data
+bin/mysqld_safe --user=mysql &
+cp support-files/mysql.server /etc/init.d/mysql.server
+#
+chown -R mysql:mysql /usr/local/mysql
+#

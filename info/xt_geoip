@@ -1,0 +1,10 @@
+yum install gcc gcc-c++ make automake unzip zip xz kernel-devel-`uname -r` iptables-devel
+yum install xtables-addons perl-Text-CSV_XS
+
+modprobe compat_xtables
+lsmod | grep compat_xtables
+modinfo xt_geoip
+
+xt_geoip_dl
+xt_geoip_build *.csv
+

@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Dmitry Troshenkov - dmitry.troshenkov@megafon.ru
+
+function _ROTATE {
+    SUFFIX=$(date +"%d-%b-%Y:%H:%M")
+    FILES=$(find ${PREFIX} -name '*.log' ! -name ${RLOG} )
+    OVER_SIZE=5368709120 # Size by Bytes (5Gb)
+    R_SIZE=104857600 # File size for act (100Mb)
+    DAYS_KEEP=15
+    
+if [[ ${FILES} ]]; then
+    for f in ${FILES} ${RLOG} ; do
+      _SIZE=$(du -sb ${f} | awk '{ print $1 }')
+	if [[ ${_SIZE} -ge ${R_SIZE} ]] ; then # If the file is greater than or equal to 'R_SIZE'
+	    if [[ ${_SIZE} -lt ${OVER_SIZE} ]] ; then # If the file is less than 'OVER_SIZE'
+		echo ${SUFFIX} - Rotation ${f} >> ${RLOG}
+		#cp ${f} $f.${SUFFIX} && cat /dev/null > ${f} && gzip -c ${f}.${SUFFIX} > ${f}.${SUFFIX}.gz && rm -rf ${f}.${SUFFIX}
+		mv ${f} $f.${SUFFIX} && sh ${BIN_DIR}/nginxctl reload && gzip -f ${f}.${SUFFIX}
+	     else
+		echo ${SUFFIX} - ${f} ' file size is over ' ${OVER_SIZE} 'Bytes. Reseting log file and reloading NGINX ...'  >> ${RLOG}
+		cat /dev/null > ${f} && sh ${BIN_DIR}/nginxctl reload
+	    fi
+	fi
+    done
+ else
+    echo ${SUFFIX} ' The log files is not exist but NGINX has been up from ' ${BIN_DIR} ' and running. Reloading NGINX ... ' >> ${RLOG}
+    sh ${BIN_DIR}/nginxctl reload
+fi
+}
+
+function _DEL_LOGS {
+    find ${PREFIX}/*.gz -type f -mtime +${DAYS_KEEP} -delete > /dev/null 2>&1
+}
+
+# NGINX_OAPI_FE
+if [[ $(ps -ef | grep nginx.conf | grep _fe | awk '{ print $1 }' | uniq) = ${USER} && $(dirname "$0" | grep '_fe') ]]; then
+    BIN_DIR='/data/'${USER}'/nginx_oapi_fe/nginx'; PREFIX=${BIN_DIR}'/logs/'; RLOG=${PREFIX}'rotate.log'
+    _DEL_LOGS
+    _ROTATE
+fi
+
+# NGINX_OAPI_BE
+if [[ $(ps -ef | grep nginx.conf | grep _be | awk '{ print $1 }' | uniq) = ${USER} && $(dirname "$0" | grep '_be') ]]; then
+    BIN_DIR='/data/'${USER}'/nginx_oapi_be/nginx'; PREFIX=${BIN_DIR}'/logs/'; RLOG=${PREFIX}'rotate.log'
+    _DEL_LOGS
+    _ROTATE
+fi
+
+exit 0

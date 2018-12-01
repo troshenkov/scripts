@@ -1,0 +1,14 @@
+#
+/usr/local/cpanel/bin/update-horde --force
+/usr/local/cpanel/bin/update-roundcube --force
+#
+/opt/alt/phpXX/etc/php.d.all/apc.ini
+cagefsctl --rebuild-alt-php-in
+# add for exec permission
+nano  /etc/cagefs/cagefs.mp
+cagefsctl --remount-all
+#
+rhnreg_ks --activationKey=<XXXXXXXXXXX>
+#
+clnreg_ks --force && cldetect --update-license
+#

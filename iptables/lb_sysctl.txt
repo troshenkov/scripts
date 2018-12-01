@@ -1,0 +1,69 @@
+# For a load balancer.
+
+# Number of open files
+# cat /proc/$(fuser 80/tcp 2>/dev/null  | awk '{print $1}')/limits
+# ulimit -a
+# vi /etc/security/limits.conf
+# * soft nofile 10000000
+# * hard nofile 10000000
+# root soft nofile 10000000
+# root hard nofile 10000000
+
+# Count of opened files
+# lsof | wc -l
+
+# Optimization for port use for LBs
+# yum install conntrack-tools
+# vi /etc/conntrackd/conntrackd.conf
+# /etc/init.d/conntrackd start
+# conntrackd -s
+# iptables -I INPUT -p tcp --dport 80 -m state --state NEW -m recent --set
+
+# Conntrack
+# conn_count=$(sysctl --values net.netfilter.nf_conntrack_count)
+# sysctl --write net.netfilter.nf_conntrack_max=${conn_count}
+# sysctl --write net.netfilter.nf_conntrack_buckets=$((${conn_count}/4))
+# modprobe nf_conntrack
+# modprobe ip_conntrack
+
+# Determines the maximum number of files in total that can be opened on the system.
+sysctl -w fs.file-max = 786046
+
+# Determines the maximum value that fs.file-max can be configured to.
+sysctl -w fs.nr_open = 786046
+
+# TCP parameters
+# Disable/Enable IP forwarding
+sysctl -w net.ipv4.ip_forward = 0
+# Turning on Packet Forwarding and Nonlocal Binding
+sysctl -w net.ipv4.ip_nonlocal_bind = 1
+# A variable sets how many half-open connections to backlog queue.
+sysctl -w net.ipv4.tcp_max_syn_backlog = 100000
+# Increase number of incoming connections
+sysctl -w net.core.somaxconn = 65535
+# Increase number of incoming connections backlog
+sysctl -w net.core.netdev_max_backlog = 65536
+
+# TCP Buffer	
+# Increase the maximum total buffer-space allocatable
+# This is measured in units of pages (4096 bytes)
+sysctl -w net.ipv4.tcp_mem = 786432 1048576 26777216
+sysctl -w net.ipv4.udp_mem = 65536 131072 262144
+# Increase the read-buffer space allocatable
+sysctl -w net.ipv4.tcp_rmem = 8192 87380 33554432
+sysctl -w net.ipv4.udp_rmem_min = 16384
+# Increase the write-buffer-space allocatable
+sysctl -w net.ipv4.tcp_wmem = 8192 65536 33554432
+sysctl -w net.ipv4.udp_wmem_min = 16384
+
+# Allowed local port range
+net.ipv4.ip_local_port_range = 2000 65535
+
+# cat /proc/sys/net/ipv4/neigh/default/gc_thresh*
+# “Neighbour table overflow” error 
+# To enlarge the ARP cache table on the live system run:
+sysctl -w net.ipv4.neigh.default.gc_thresh1 = 512
+sysctl -w net.ipv4.neigh.default.gc_thresh2 = 1024
+sysctl -w net.ipv4.neigh.default.gc_thresh3 = 2048
+
+# Keepalived is used for IP failover between two servers.

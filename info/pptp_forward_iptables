@@ -1,0 +1,5 @@
+modprobe ip_nat_pptp
+modprobe nf_nat_proto_gre
+modprobe nf_conntrack_pptp
+modprobe nf_conntrack_proto_gre
+

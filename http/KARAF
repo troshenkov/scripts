@@ -1,0 +1,22 @@
+#!/bin/bash
+
+ESB_PATH="/data/oapi/openapi/oapi_esb/container/"
+PATH_TOMCAT="/data/oapi/openapi/oapi_tomcat/"
+
+CFG=${ESB_PATH}/etc/"com.peterservice.osgiservices.openapi.policy.cfg"
+
+up_func(){
+OLD_VER=$(grep '/backend/subscribers' ${CFG} | tr "-" "/" | awk -F'/' '{ print $4 }')
+sed -i -e 's/'${OLD_VER}'/'${NEW_VER}'/g' ${CFG}
+}
+
+# ctime -1
+NEW_VER=$(find ${PATH_TOMCAT}/tomcat-webapp/ -type f -ctime -1 -name oapi-bis-backend-*.war | awk -F'/' '{ print $6 }' | sed 's/oapi-bis-backend-\(.*\)\.war/\1/')
+
+if [ ${NEW_VER} ]; then
+    up_func
+fi
+
+exit 0
+#########################################################################################
+# ls *.zip|awk -F'.zip' '{print "unzip "$0" -d "$1}'|sh
