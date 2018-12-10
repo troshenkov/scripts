@@ -4,7 +4,7 @@
 # IPTables Rules for a web-hosting production server 
 
 IPT="/sbin/iptables"
-SERVER_IP=`ifconfig eth0 | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
+SERVER_IP=$(ifconfig eth0 | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}')
 PUB_IF="eth0"   # public interface
 LO_IF="lo"      # loopback
 SPOOFIP="127.0.0.0/8 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8 169.254.0.0/16 0.0.0.0/8 240.0.0.0/4 255.255.255.255/32 168.254.0.0/16 224.0.0.0/4 240.0.0.0/5 248.0.0.0/5 192.0.2.0/24"
@@ -24,7 +24,7 @@ WEBALTA="77.91.224.0/21"
 #                                                                                                                                                                        
 EXT_SSH="4.4.4.4/28 5.5.5.5/29"
 #                                                                                                                                                                        
-CLOUDFLARE_IP_RANGE=`curl http://www.cloudflare.com/ips-v4`
+CLOUDFLARE_IP_RANGE=$(curl http://www.cloudflare.com/ips-v4)
 #                                                                                                                                                                        
 LOCATION_IP_RANGE='0.0.0.0'
 #
@@ -145,8 +145,8 @@ $IPT -A INPUT -i ${PUB_IF} -p tcp --tcp-flags SYN,FIN SYN,FIN -j DROP
 # Log and block spoofed ips
 $IPT -N spooflist
 for ip in $SPOOFIP; do
-$IPT -A spooflist -i ${PUB_IF} -s $ip -j LOG --log-prefix " SPOOF List Block "
-$IPT -A spooflist -i ${PUB_IF} -s $ip -j DROP
+$IPT -A spooflist -i ${PUB_IF} -s "$ip" -j LOG --log-prefix " SPOOF List Block "
+$IPT -A spooflist -i ${PUB_IF} -s "$ip" -j DROP
 done
 $IPT -I INPUT -j spooflist
 $IPT -I OUTPUT -j spooflist
@@ -184,69 +184,69 @@ $IPT -A FORWARD -m recent --name portscan --remove
 #
 #### Allow ICMP
 # incoming
-$IPT -A INPUT -p icmp --icmp-type 8 -s 0/0 -d ${SERVER_IP} -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
-$IPT -A OUTPUT -p icmp --icmp-type 0 -s ${SERVER_IP} -d 0/0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+$IPT -A INPUT -p icmp --icmp-type 8 -s 0/0 -d "${SERVER_IP}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+$IPT -A OUTPUT -p icmp --icmp-type 0 -s "${SERVER_IP}" -d 0/0 -m state --state ESTABLISHED,RELATED -j ACCEPT
 # outgoing
-$IPT -A OUTPUT -p icmp --icmp-type 8 -s ${SERVER_IP} -d 0/0 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
-$IPT -A INPUT -p icmp --icmp-type 0 -s 0/0 -d ${SERVER_IP} -m state --state ESTABLISHED,RELATED -j ACCEPT
+$IPT -A OUTPUT -p icmp --icmp-type 8 -s "${SERVER_IP}" -d 0/0 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+$IPT -A INPUT -p icmp --icmp-type 0 -s 0/0 -d "${SERVER_IP}" -m state --state ESTABLISHED,RELATED -j ACCEPT
 #
 #### Allow INTERNAL SSH
 for ip in ${AM_SERVERS} ${EXT_SSH}; do
 # incoming
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport 513:65535 -d ${SERVER_IP} --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 22 -d $ip --dport 513:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport 513:65535 -d "${SERVER_IP}" --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 22 -d "$ip" --dport 513:65535 -m state --state ESTABLISHED -j ACCEPT
 done
 # outgoing
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 513:65535 -d 0/0 --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 22 -d ${SERVER_IP} --dport 513:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 513:65535 -d 0/0 --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 22 -d "${SERVER_IP}" --dport 513:65535 -m state --state ESTABLISHED -j ACCEPT
 #
 #### Allow SMTP
 # incoming
-#$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d ${SERVER_IP} --dport 25 -m state --state NEW,ESTABLISHED -j ACCEPT
-#$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 25 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+#$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d "${SERVER_IP}" --dport 25 -m state --state NEW,ESTABLISHED -j ACCEPT
+#$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 25 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # outgoing
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 1024:65535 -d 0/0 --dport 25 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 25 -d ${SERVER_IP} --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d 0/0 --dport 25 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 25 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 #
 #### Allow MySQL
 for ip in ${AM_SERVERS}; do
 # incoming
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport 1024:65535 -d ${SERVER_IP} --dport 3306 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 3306 -d $ip --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport 1024:65535 -d "${SERVER_IP}" --dport 3306 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 3306 -d "$ip" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # outgoing
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 1024:65535 -d $ip --dport 3306 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport 3306 -d ${SERVER_IP} --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d "$ip" --dport 3306 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport 3306 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 done
 #
 #### Allow TELNET
 for ip in ${AM_SERVERS}; do
 # incoming
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport 1024:65535 -d ${SERVER_IP} --dport 23 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 23 -d $ip --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport 1024:65535 -d "${SERVER_IP}" --dport 23 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 23 -d "$ip" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # outgoing
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 1024:65535 -d $ip --dport 23 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport 23 -d ${SERVER_IP} --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d "$ip" --dport 23 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport 23 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 done
 #
 #### Allow DNS
 # incoming Query
 # TCP
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d ${SERVER_IP} --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 53 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d "${SERVER_IP}" --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 53 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # UDP
-$IPT -A INPUT -i ${PUB_IF} -p udp -s 0/0 --sport 1024:65535 -d ${SERVER_IP} --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p udp -s ${SERVER_IP} --sport 53 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p udp -s 0/0 --sport 1024:65535 -d "${SERVER_IP}" --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p udp -s "${SERVER_IP}" --sport 53 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # outgoing Query
 # TCP
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 1024:65535 -d 0/0 --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 53 -d ${SERVER_IP} --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d 0/0 --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 53 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # UDP
-$IPT -A OUTPUT -o ${PUB_IF} -p udp -s ${SERVER_IP} --sport 1024:65535 -d 0/0 --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p udp -s 0/0 --sport 53 -d ${SERVER_IP} --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p udp -s "${SERVER_IP}" --sport 1024:65535 -d 0/0 --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p udp -s 0/0 --sport 53 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 #
 #### Allow outgoing NTP Client
-$IPT -A OUTPUT -o ${PUB_IF} -p udp -s ${SERVER_IP} --sport 123 -d 0/0 --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT  -i ${PUB_IF} -p udp -s 0/0 --sport 123 -d ${SERVER_IP} -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p udp -s "${SERVER_IP}" --sport 123 -d 0/0 --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT  -i ${PUB_IF} -p udp -s 0/0 --sport 123 -d "${SERVER_IP}" -m state --state ESTABLISHED -j ACCEPT
 #
 #### Allow FTP
 # Passive Mode (PassivePorts 49152 65534); echo `IPTABLES_MODULES="ip_conntrack_ftp"` >> /etc/sysconfig/iptables-config
@@ -254,51 +254,51 @@ modprobe ip_conntrack
 modprobe ip_conntrack_ftp
 for ip in ${AM_SERVERS} ${LOCATION_IP_RANGE}; do
 # incoming 21
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport 1024:65535 -d ${SERVER_IP} --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 21 -d $ip --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport 1024:65535 -d "${SERVER_IP}" --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 21 -d "$ip" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 done
 # data
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d ${SERVER_IP} --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 1024:65535 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # outgoing 20
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 20 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d ${SERVER_IP} --dport 20 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 20 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d "${SERVER_IP}" --dport 20 -m state --state ESTABLISHED -j ACCEPT
 # outgoing 21
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport 1024:65535 -d 0/0 --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 21 -d ${SERVER_IP} --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d 0/0 --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 21 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 #
 # HTTP RULES
 # Allow WEB search robots, CloudFlare
 for ip in $GOOGLE $YANDEX $YAHOO $RAMBLER $MAIL_RU $BING_COM $APORT $GIGA $LIVEINTERNET $WEBALTA $CLOUDFLARE_IP_RANGE $Yandex_Bot; do
-$IPT -A INPUT -s $ip -p tcp -m tcp -d $SERVER_IP --dport 80 -m state --state NEW -j ACCEPT
-$IPT -A INPUT -s $ip -p tcp -m tcp -d $SERVER_IP --dport 80 -j ACCEPT
+$IPT -A INPUT -s "$ip" -p tcp -m tcp -d "${SERVER_IP}" --dport 80 -m state --state NEW -j ACCEPT
+$IPT -A INPUT -s "$ip" -p tcp -m tcp -d "${SERVER_IP}" --dport 80 -j ACCEPT
 done
 # Limit the number of connections on the HTTP port from one ip sends no more 20 packages per 1 second
-#$IPT -A INPUT -p tcp -m tcp -d ${SERVER_IP} --dport 80 -m state --state NEW -m recent --name dpt80 --set
-#$IPT -A INPUT -p tcp -m tcp -d ${SERVER_IP} --dport 80 -m state --state NEW -m recent --name dpt80 --update --seconds 1 --hitcount 20 -j DROP
+#$IPT -A INPUT -p tcp -m tcp -d "${SERVER_IP}" --dport 80 -m state --state NEW -m recent --name dpt80 --set
+#$IPT -A INPUT -p tcp -m tcp -d "${SERVER_IP}" --dport 80 -m state --state NEW -m recent --name dpt80 --update --seconds 1 --hitcount 20 -j DROP
 # Allow no more than 35 tcp connections to 80 port from one ip
-#$IPT -A INPUT -p tcp -m tcp --syn -d ${SERVER_IP} --dport 80 -m connlimit --connlimit-above 35 -j REJECT --reject-with tcp-reset
+#$IPT -A INPUT -p tcp -m tcp --syn -d "${SERVER_IP}" --dport 80 -m connlimit --connlimit-above 35 -j REJECT --reject-with tcp-reset
 # incoming 80 (HTTP)
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d $SERVER_IP --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s $SERVER_IP --sport 80 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 1024:65535 -d "${SERVER_IP}" --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 80 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 #
 # outgoing 80 (HTTP)
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s $SERVER_IP --sport 1024:65535 -d 0/0 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 80 -d $SERVER_IP --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d 0/0 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 80 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 #
 # outgoing 443 (HTTPS)
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s $SERVER_IP --sport 1024:65535 -d 0/0 --dport 443 -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 443 -d $SERVER_IP --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d 0/0 --dport 443 -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s 0/0 --sport 443 -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 #
 # Cpanel WHM, 2082:2083 (cPanel http and https), 2086:2087 (WHM http and https), 2095:2096 (webmail http and https)
 WHM_PORTS="2082:2096"
 for ip in $AM_SERVERS; do
 # incoming
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport 1024:65535 -d ${SERVER_IP} --dport $WHM_PORTS -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s ${SERVER_IP} --sport $WHM_PORTS -d $ip --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport 1024:65535 -d "${SERVER_IP}" --dport $WHM_PORTS -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport $WHM_PORTS -d "$ip" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 # outgoing
-$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s $SERVER_IP --sport 1024:65535 -d $ip --dport $WHM_PORTS -m state --state NEW,ESTABLISHED -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p tcp -s $ip --sport $WHM_PORTS -d $SERVER_IP --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p tcp -s "${SERVER_IP}" --sport 1024:65535 -d "$ip" --dport $WHM_PORTS -m state --state NEW,ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p tcp -s "$ip" --sport $WHM_PORTS -d "${SERVER_IP}" --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 done
 #
 ########################
@@ -309,11 +309,11 @@ $IPT -A INPUT -p tcp -m multiport --dports 25,110 -m state --state NEW -m recent
 # Allow udp/rtp
 for ip in $AM_SERVERS; do
 # incoming
-$IPT -A INPUT -i ${PUB_IF} -p udp -s $ip -d ${SERVER_IP} -m state --state NEW -j ACCEPT
-$IPT -A OUTPUT -o ${PUB_IF} -p udp -s ${SERVER_IP} -d $ip -m state --state ESTABLISHED -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p udp -s "$ip" -d "${SERVER_IP}" -m state --state NEW -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p udp -s "${SERVER_IP}" -d "$ip" -m state --state ESTABLISHED -j ACCEPT
 # outgoing
-$IPT -A OUTPUT -o ${PUB_IF} -p udp -s $SERVER_IP -d $ip -m state --state NEW -j ACCEPT
-$IPT -A INPUT -i ${PUB_IF} -p udp -s $ip -d $SERVER_IP -m state --state ESTABLISHED -j ACCEPT
+$IPT -A OUTPUT -o ${PUB_IF} -p udp -s "${SERVER_IP}" -d "$ip" -m state --state NEW -j ACCEPT
+$IPT -A INPUT -i ${PUB_IF} -p udp -s "$ip" -d "${SERVER_IP}" -m state --state ESTABLISHED -j ACCEPT
 done
 #
 # Reject All INPUT traffic
