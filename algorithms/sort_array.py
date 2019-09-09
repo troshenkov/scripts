@@ -9,7 +9,6 @@ def insert_sort(A):
             A[k], A[k-1] = A[k-1], A[k]
             k -= 1
 
-
 def choice_sort(A):
     """Choice/Selection Sorting - O(N2)"""
     N = len(A)
