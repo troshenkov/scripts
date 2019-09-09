@@ -11,7 +11,7 @@ def insert_sort(A):
 
 
 def choice_sort(A):
-    """Choice Sorting - O(N2)"""
+    """Choice/Selection Sorting - O(N2)"""
     N = len(A)
     for pos in range(0, N-1):
         for k in range (pos+1, N):
