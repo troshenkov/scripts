@@ -13,8 +13,7 @@ def insert_sort(A):
 def choise_sort(A):
     """Choise Sorting - O(N2)"""
     N = len(A)
-    for pos in range(0, 
-N-1):
+    for pos in range(0, N-1):
         for k in range (pos+1, N):
             if A[k] < A[pos]:
                 A[k], A[pos] = A [pos], A[k]
@@ -22,7 +21,7 @@ N-1):
 def bubble_sort(A):
     """Bubble Sorting - O(N2)"""
     N = len(A)
-    for bypass in range(1, N)
+    for bypass in range(1, N):
         for k in range(0, N-bypass):
             if A[k] > A[k+1]:
                 A[k], A[k+1] = A[k+1], A[k]             
