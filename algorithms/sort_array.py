@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 def insert_sort(A):
-    """Inser Sorting - O(N2)"""
+    """Insertion Sorting - O(N2)"""
     N = len(A)
     for top in range(1, N):
         k = top
@@ -10,8 +10,8 @@ def insert_sort(A):
             k -= 1
 
 
-def choise_sort(A):
-    """Choise Sorting - O(N2)"""
+def choice_sort(A):
+    """Choice Sorting - O(N2)"""
     N = len(A)
     for pos in range(0, N-1):
         for k in range (pos+1, N):
@@ -54,6 +54,6 @@ def test_sort(sort_algorithm):
 if __name__ == "__main__":
 
     test_sort(insert_sort)
-    test_sort(choise_sort)
+    test_sort(choice_sort)
     test_sort(bubble_sort)
 
