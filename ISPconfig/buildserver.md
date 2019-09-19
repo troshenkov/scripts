@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 ```sh
-=======
-https://www.howtoforge.com/perfect-server-centos-6.4-x86_64-apache2-dovecot-ispconfig-3-p4
-
->>>>>>> b13c58033df47de62e7317a36158973eb4ed5d03
 //********************************
 # Notworking konfiguration
 ifconfig
@@ -34,10 +29,6 @@ vi /etc/yum.repos.d/epel.repo
 
 yum update
 
-<<<<<<< HEAD
-=======
-
->>>>>>> b13c58033df47de62e7317a36158973eb4ed5d03
 # Quota
 yum install quota
 vi /etc/fstab
@@ -69,7 +60,7 @@ mysql_secure_installation
 Af2j9_Ov]YjT6XB
 
 vi /etc/httpd/conf.d/phpmyadmin.conf
-???
+#???
 
 vi /usr/share/phpmyadmin/config.inc.php
 > $cfg['Servers'][$i]['auth_type'] = 'http';
@@ -88,13 +79,7 @@ chkconfig --levels 235 clamd.amavisd on
 /etc/init.d/amavisd start
 /etc/init.d/clamd.amavisd start
 
-
-<<<<<<< HEAD
 #!!!!
-=======
-!!!!
-
-
 
 >>>>>>> b13c58033df47de62e7317a36158973eb4ed5d03
 
@@ -308,8 +293,6 @@ Command >> <--Q
 vi /etc/squirrelmail/config_local.php
 >//$default_folder_prefix                = '';
 
-
-
 # Install ISPConfig 3
 cd /tmp
 wget http://www.ispconfig.org/downloads/ISPConfig-3-stable.tar.gz
@@ -318,8 +301,5 @@ cd ispconfig3_install/install/
 
 php -q install.php
 
-<<<<<<< HEAD
 ```
-=======
-errors postalias: fatal: open /var/lib/mailman/data/aliases: No such file or directory
->>>>>>> b13c58033df47de62e7317a36158973eb4ed5d03
+

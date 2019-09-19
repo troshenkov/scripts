@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 ```sh
-=======
->>>>>>> b13c58033df47de62e7317a36158973eb4ed5d03
 ################################################################################
 ########################  Building PHP 5.6.17 (PHP-FPM)  #######################
 ################################################################################
@@ -12,14 +9,8 @@ wget http://de.php.net/get/php-5.6.17.tar.bz2/from/this/mirror -O php-5.6.17.tar
 tar jxf php-5.6.17.tar.bz2
 cd php-5.6.17
 
-<<<<<<< HEAD
 ./configure \
 --with-libdir=lib64 \
-=======
-For x64 --with-libdir=lib64 \
-
-./configure \
->>>>>>> b13c58033df47de62e7317a36158973eb4ed5d03
 --prefix=/opt/php-5.6.17 \
 --with-pdo-pgsql \
 --with-zlib-dir \
