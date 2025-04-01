@@ -1,30 +1,64 @@
 #!/bin/bash
+# ------------------------------------------------------------------------------
+# ClamAV Virus Scan & Email Alert Script
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# Description:
+#   This script updates ClamAV virus definitions, scans web directories for malware, 
+#   logs the scan results, and sends an email alert if a virus is found.
+#
+# Usage:
+#   ./clamav_scan.sh
+#
+# Features:
+#   - Updates ClamAV database before scanning.
+#   - Recursively scans all public_html directories in /home/*/.
+#   - Excludes specific directories from the scan.
+#   - Logs scan results to /tmp/clam_scan.log.
+#   - Sends an email alert with the log attached if malware is detected.
+#
+# Dependencies:
+#   - ClamAV (freshclam, clamscan)
+#   - mailx (for sending email alerts)
+#
+# Configuration:
+#   - Set EMAIL and CC variables to specify recipients for alerts.
+#   - Adjust scan exclusions as needed.
+#
+# Exit Codes:
+#   0 - Script executed successfully.
+#
+# Example:
+#   ./clamav_scan.sh
+#
+# ------------------------------------------------------------------------------
 
-# Dmitry Troshenkov (troshenkov.d@gmail.com)
+# Email configuration
+EMAIL="your@mail.tld"
+CC="some@mail.tld"
 
-# "DatabaseMirror db.de.clamav.net" >>  /etc/freshclam.conf 
+# Log file path
+LOG="/tmp/clam_scan.log"
 
-EMAIL=your@mail.tld
-CC=some@mail.tld
+# Remove the old log file if it exists
+rm -f "${LOG}"
 
-LOG=/tmp/clam_scan.log
-
-#WPATH="/usr/local/cpanel/3rdparty/bin"
-
-rm -f ${LOG};
-
-check_scan () {
-
- if [ `cat ${LOG} | grep FOUND | grep -v 0 | wc -l` != 0 ] ; then
-	echo "The log file has been attached at `date`" |  mailx -s \
-	"VIRUS at the `hostname` (`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`)" -a ${LOG} -c $CC ${EMAIL}
- fi
-
+# Function to check for virus detections and send an email alert
+check_scan() {
+    if grep -q "FOUND" "${LOG}"; then
+        SERVER_IP=$(ip -4 addr show eth0 | awk '/inet /{print $2}' | cut -d/ -f1)
+        HOSTNAME=$(hostname)
+        echo "The log file has been attached at $(date)" | mailx -s \
+            "VIRUS detected on ${HOSTNAME} (${SERVER_IP})" -a "${LOG}" -c "${CC}" "${EMAIL}"
+    fi
 }
 
-freshclam -v && clamscan --exclude-dir=/home/somedir --max-dir-recursion=200 -i -r /home/*/public_html/ --log=${LOG} > /dev/null
+# Update ClamAV database
+freshclam -v
 
+# Perform the scan, excluding specific directories and logging output
+clamscan --exclude-dir=/home/somedir --max-dir-recursion=200 -i -r /home/*/public_html/ --log="${LOG}" > /dev/null
+
+# Check the scan results and send an alert if needed
 check_scan
 
 exit 0
-
