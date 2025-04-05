@@ -1,51 +1,75 @@
 #!/bin/sh
-## Flexible updating of domain blacklist
-## FIRST DEFINE VARIABLES
+# ===================================================================
+# Flexible Updating of Domain Blacklist
+# ===================================================================
+#
+# This script updates the DNS filter chain with new domain blacklist rules.
+# It fetches the latest rules from a GitHub repository and applies them to
+# the iptables chain for DNS filtering.
+#
+# Usage: Run periodically to keep the DNS filter chain updated.
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
 
-#IPCHAIN TO USE
-IPCHAIN=dnsfilter
+# Configuration
+IPCHAIN=dnsfilter            # The iptables chain to use
+TARGET=DROP                  # Action to take when a match is made (DROP, REJECT, LOG, or custom CHAINNAME)
+BACKUP_DIR=/tmp              # Directory to store backups
 
-#Action to take when match is made DROP | REJECT | LOG | <CHAINNAME>
-TARGET=DROP
+# Function to initialize the iptables chain if it doesn't exist
+initialize_chain() {
+    echo "Checking if chain '$IPCHAIN' exists..."
+    if [ "$(iptables -L $IPCHAIN | wc -l)" -lt 1 ]; then
+        echo "Chain '$IPCHAIN' does not exist. Creating it..."
+        iptables -N $IPCHAIN
+        iptables -I INPUT -p udp --dport 53 -j $IPCHAIN
+    fi
+}
 
-#see if chain exists, if not initialize
-if [ `iptables -L $IPCHAIN | wc -l` -lt 1 ]; then
-    echo "adding chain $IPCHAIN"
-    iptables -N $IPCHAIN
-    iptables -I INPUT -p udp --dport 53 -j $IPCHAIN
-fi
+# Function to back up iptables rules
+backup_iptables() {
+    echo "Backing up iptables rules..."
+    iptables-save > "${BACKUP_DIR}/iptables_rules_$(date +%Y%m%d_%H%M%S).txt"
+    iptables -n -L $IPCHAIN > "${BACKUP_DIR}/iptables_old.txt"
+    old_count=$(wc -l < "${BACKUP_DIR}/iptables_old.txt")
+    echo "Rules in '$IPCHAIN' before update: $(($old_count - 2))"
+}
 
-#backup Iptables
+# Function to flush the iptables chain and apply the default action
+flush_and_reset_chain() {
+    echo "Flushing chain '$IPCHAIN' and setting default action to RETURN..."
+    iptables -F $IPCHAIN
+    iptables -A $IPCHAIN -j RETURN
+}
 
+# Function to update the rules from GitHub
+update_blacklist() {
+    echo "Fetching new rules from GitHub..."
+    curl -s https://raw.github.com/smurfmonitor/dns-iptables-rules/master/domain-blacklist.txt | while read line; do
+        RULE=$(echo "$line" | sed -e "s/INPUT/$IPCHAIN/" -e "s/-j DROP/-j $TARGET/")
+        eval $RULE
+    done
+}
 
-iptables-save > /tmp/iptables_rules_$(date +%Y%m%d_%H%M%S).txt
+# Function to compare the old and new iptables rules
+compare_rules() {
+    iptables -n -L $IPCHAIN > "${BACKUP_DIR}/iptables_new.txt"
+    new_count=$(wc -l < "${BACKUP_DIR}/iptables_new.txt")
+    echo "Rules in '$IPCHAIN' after update: $(($new_count - 2))"
+    diff "${BACKUP_DIR}/iptables_old.txt" "${BACKUP_DIR}/iptables_new.txt"
+}
 
-iptables -n -L $IPCHAIN > /tmp/iptables_old.txt
-old_count=$(cat /tmp/iptables_old.txt | wc -l)
-echo "Rules in $IPCHAIN before update: $(expr $old_count - 2)"
+# Main execution
+initialize_chain
+backup_iptables
+flush_and_reset_chain
+update_blacklist
+compare_rules
 
-#FLUSH CHAIN
-iptables -F $IPCHAIN
+# Cleanup
+rm -f "${BACKUP_DIR}/iptables_new.txt" "${BACKUP_DIR}/iptables_old.txt"
 
-#Add default action
-iptables -A $IPCHAIN -j RETURN
-
-##Now for the rules  -- copied from domain-blacklist.txt
-
-# get new rules from github, replace INPUT for IPCHAIN and DROP for TARGET and apply. 
-
-curl -s https://raw.github.com/smurfmonitor/dns-iptables-rules/master/domain-blacklist.txt | while read line; 
-        do RULE=$(echo "$line" | sed -e "s/INPUT/$IPCHAIN/" -e "s/-j DROP/-j $TARGET/"); 
-                eval $RULE; 
-        done
-
-iptables -n -L $IPCHAIN > /tmp/iptables_new.txt
-new_count=$(cat /tmp/iptables_new.txt | wc -l)
-echo "Rules in $IPCHAIN after update: $(expr $new_count - 2)"
-
-diff /tmp/iptables_old.txt /tmp/iptables_new.txt
-
-rm /tmp/iptables_new.txt /tmp/iptables_old.txt
+echo "Domain blacklist update completed."
 
 exit 0
-
