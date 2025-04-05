@@ -1,8 +1,34 @@
 #!/bin/bash
 
-#SSN='000-00-0000'
-SSN='XXX-xx-XXXx'
+# ===================================================================
+# SSN Validation Script
+# ===================================================================
+# Purpose:
+#   - Validate Social Security Numbers (SSNs) using a comprehensive regular expression.
+#   - Process multiple SSNs passed as arguments.
+#
+# Usage:
+#   - ./script_name.sh <SSN1> <SSN2> ...
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
 
-pattern='^[0-9]{3}\-[0-9]{2}\-[0-9]{4}$|^[XX]{3}\-[Xx]{2}\-[Xx]{4}$'
+# Function to validate SSN
+validate_ssn() {
+    local ssn="$1"
+    local pattern="^(?!000|666|9\d{2})\d{3}-(?!00)\d{2}-(?!0000)\d{4}$"
+    if [[ "$ssn" =~ $pattern ]]; then
+        echo "SSN '$ssn' is valid."
+    else
+        echo "SSN '$ssn' is invalid."
+    fi
+}
 
-[[ $SSN =~ $pattern ]] && echo good || echo bad
+# Main script execution
+if [[ "$#" -gt 0 ]]; then
+    for ssn in "$@"; do
+        validate_ssn "$ssn"
+    done
+else
+    echo "No SSNs provided. Usage: $0 <SSN1> <SSN2> ..."
+fi
