@@ -1,5 +1,51 @@
-modprobe ip_nat_pptp
-modprobe nf_nat_proto_gre
-modprobe nf_conntrack_pptp
-modprobe nf_conntrack_proto_gre
+#!/bin/bash
 
+# ===================================================================
+# Script to Load and Persist PPTP NAT Modules
+# ===================================================================
+#
+# This script loads required kernel modules for PPTP NAT and ensures 
+# they are persistently loaded across reboots.
+#
+# The script will:
+# - Load the following kernel modules if they are not already loaded:
+#   - ip_nat_pptp
+#   - nf_nat_proto_gre
+#   - nf_conntrack_pptp
+#   - nf_conntrack_proto_gre
+# - Ensure the modules are automatically loaded on boot by updating
+#   /etc/modules-load.d/pptp_nat.conf.
+#
+# Improvements:
+# - Checks if modules are already loaded to avoid redundant loading.
+# - Configures modules for persistence across reboots.
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
+
+MODULES=(
+    "ip_nat_pptp"
+    "nf_nat_proto_gre"
+    "nf_conntrack_pptp"
+    "nf_conntrack_proto_gre"
+)
+
+# Load modules if not already loaded
+for module in "${MODULES[@]}"; do
+    if ! lsmod | grep -q "^$module"; then
+        echo "Loading module: $module"
+        modprobe "$module" && echo "$module loaded successfully" || echo "Failed to load $module"
+    else
+        echo "Module $module is already loaded"
+    fi
+done
+
+# Make modules persistent across reboots
+echo "Ensuring modules are loaded on boot..."
+MODULES_CONF="/etc/modules-load.d/pptp_nat.conf"
+echo "# PPTP NAT modules for connection tracking" | sudo tee "$MODULES_CONF" > /dev/null
+for module in "${MODULES[@]}"; do
+    echo "$module" | sudo tee -a "$MODULES_CONF" > /dev/null
+done
+
+echo "All necessary modules are loaded and configured for persistence."
