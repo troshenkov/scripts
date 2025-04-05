@@ -1,10 +1,54 @@
-yum install gcc gcc-c++ make automake unzip zip xz kernel-devel-`uname -r` iptables-devel
-yum install xtables-addons perl-Text-CSV_XS
+#!/bin/bash
+# ===================================================================
+# Script to Install Dependencies, Load Kernel Modules, and Configure xt_geoip
+# ===================================================================
+#
+# This script installs necessary dependencies, loads the required kernel modules,
+# and configures the xt_geoip module for IP geolocation filtering.
+#
+# The script will:
+# - Install necessary packages using `yum`.
+# - Load the compat_xtables kernel module.
+# - Check the status of the module.
+# - Download and build the xt_geoip database.
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
 
-modprobe compat_xtables
-lsmod | grep compat_xtables
-modinfo xt_geoip
+# Function to install required dependencies
+install_dependencies() {
+    echo "Installing required packages..."
+    sudo yum install -y gcc gcc-c++ make automake unzip zip xz kernel-devel-$(uname -r) iptables-devel
+    sudo yum install -y xtables-addons perl-Text-CSV_XS
+}
 
-xt_geoip_dl
-xt_geoip_build *.csv
+# Function to load the compat_xtables kernel module
+load_kernel_modules() {
+    echo "Loading compat_xtables kernel module..."
+    sudo modprobe compat_xtables
+    echo "Checking if compat_xtables is loaded..."
+    lsmod | grep compat_xtables
+}
 
+# Function to display information about xt_geoip module
+check_xt_geoip() {
+    echo "Getting information about xt_geoip module..."
+    sudo modinfo xt_geoip
+}
+
+# Function to download and build the xt_geoip database
+download_and_build_xt_geoip() {
+    echo "Downloading xt_geoip database..."
+    xt_geoip_dl
+
+    echo "Building xt_geoip database..."
+    xt_geoip_build *.csv
+}
+
+# Main execution flow
+install_dependencies
+load_kernel_modules
+check_xt_geoip
+download_and_build_xt_geoip
+
+echo "Script execution completed."
