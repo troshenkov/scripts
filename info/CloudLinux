@@ -1,14 +1,49 @@
+#!/bin/bash
+# ===================================================================
+# Script to Update and Configure Horde, Roundcube, PHP, CageFS, and RHN/CLN
+# ===================================================================
 #
+# This script performs updates and configuration tasks for:
+# - Horde and Roundcube webmail applications.
+# - PHP configuration for alternative PHP versions.
+# - CageFS configuration for PHP and exec permissions.
+# - Red Hat Network (RHN) and CloudLinux Network (CLN) registration.
+#
+# The script will:
+# - Force update of Horde and Roundcube.
+# - Rebuild PHP configurations in CageFS.
+# - Modify and remount CageFS settings.
+# - Register with RHN and CLN with provided keys.
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
+
+# Update Horde and Roundcube webmail applications
+echo "Updating Horde..."
 /usr/local/cpanel/bin/update-horde --force
+
+echo "Updating Roundcube..."
 /usr/local/cpanel/bin/update-roundcube --force
-#
+
+# Rebuild PHP configurations using CageFS
+echo "Rebuilding PHP configurations with CageFS..."
 /opt/alt/phpXX/etc/php.d.all/apc.ini
 cagefsctl --rebuild-alt-php-in
-# add for exec permission
-nano  /etc/cagefs/cagefs.mp
+
+# Grant exec permission and modify CageFS configuration
+echo "Adding exec permission for CageFS..."
+nano /etc/cagefs/cagefs.mp
+
+# Remount CageFS to apply the changes
+echo "Remounting CageFS..."
 cagefsctl --remount-all
-#
+
+# Register system with Red Hat Network (RHN) using activation key
+echo "Registering with RHN..."
 rhnreg_ks --activationKey=<XXXXXXXXXXX>
-#
+
+# Force CLN registration and update license
+echo "Registering with CLN and updating license..."
 clnreg_ks --force && cldetect --update-license
-#
+
+echo "Script execution completed."
