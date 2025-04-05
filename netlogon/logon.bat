@@ -16,7 +16,7 @@ REM   - Ensure the script is executed with administrative privileges.
 REM   - Place this script in the appropriate startup folder or configure
 REM     it to run at startup via Group Policy or Task Scheduler.
 REM
-REM Author: Your Name (your.email@example.com)
+REM Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
 REM ===================================================================
 
 REM Set variables

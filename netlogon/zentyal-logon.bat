@@ -1,23 +1,38 @@
-echo off
+@echo off
+REM ===================================================================
+REM Windows Client Domain Join and Network Drive Mapping Script
+REM ===================================================================
+REM
+REM Purpose:
+REM   - Join the Windows client to the Zentyal domain.
+REM   - Map network drives based on user credentials.
+REM
+REM Usage:
+REM   - Run this script with administrative privileges on the Windows client.
+REM
+REM Author:  Dmitry Troshenkov (troshenkov.d@gmail.com)
+REM ===================================================================
 
-set Win7=
-set Win7.Major=6
-set Win7.Minor=1
+REM Set domain and server variables
+SET DOMAIN=yourdomain.local
+SET SERVER=\\your-zentyal-server
+SET USERNAME=%USERNAME%
 
-set Version=
-for /f "skip=1" %%v in ('wmic os get version') do if not defined Version set Version=%%v
-for /f "delims=. tokens=1-3" %%a in ("%Version%") do (
-  set Version.Major=%%a
-  set Version.Minor=%%b
-  set Version.Build=%%c
+REM Join the Windows client to the Zentyal domain
+echo Joining domain %DOMAIN%...
+netdom join %COMPUTERNAME% /domain:%DOMAIN% /userD:Administrator /passwordD:YourAdminPassword
+if %ERRORLEVEL% neq 0 (
+    echo Failed to join domain. Please check your network connection and credentials.
+    exit /b %ERRORLEVEL%
 )
 
-set GEQ_W7=
-if %Version.Major%==%Win7.Major% (
-        if %Version.Minor% geq %Win7.Minor% set GEQ_W7=1
-) else if %Version.Major% gtr %Win7.Major% set GEQ_W7=1
-
-if defined GEQ_W7 (
-  net use Z: \\server\%USERNAME%
+REM Map network drives based on user credentials
+echo Mapping network drives for user %USERNAME%...
+net use Z: %SERVER%\%USERNAME%
+if %ERRORLEVEL% neq 0 (
+    echo Failed to map network drive Z:. Please check your network connection and permissions.
+    exit /b %ERRORLEVEL%
 )
 
+echo Script executed successfully.
+exit /b 0
