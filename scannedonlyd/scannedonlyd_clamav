@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+# /etc/init.d/scannedonlyd_clamav
+# v1.1 04.04.2025
+# Dmitry Troshenkov (troshenkov.d@gmail.com)
+#
+# description: Manages the scannedonlyd_clamav service
+# chkconfig: 345 92 8
+# processname: scannedonlyd_clamav
+# pidfile: /var/run/scannedonlyd_clamav.pid
+
+# Source function library.
+. /etc/init.d/functions
+
+# Service and configuration details
+PROG="scannedonlyd_clamav"
+EXEC="/usr/local/sbin/$PROG"
+CONF_FILE="/etc/$PROG.conf"
+PID_FILE="/var/run/${PROG}.pid"
+
+# Ensure the executable exists
+if [ ! -x "$EXEC" ]; then
+    echo "$EXEC does not exist or is not executable."
+    exit 1
+fi
+
+# Ensure the configuration file exists
+if [ ! -f "$CONF_FILE" ]; then
+    echo "Configuration file $CONF_FILE not found."
+    exit 1
+fi
+
+# Load configuration
+. "$CONF_FILE"
+
+# Ensure required directories exist
+[ -d "${socket%/*}" ] || mkdir -p "${socket%/*}"
+[ -d "$quarantaine_dir" ] || mkdir -p "$quarantaine_dir"
+
+start() {
+    echo -n "Starting $PROG: "
+    if [ -f "$PID_FILE" ]; then
+        echo "$PROG is already running."
+        exit 0
+    fi
+
+    # Determine method (socket or port) and construct options
+    if [ -n "$socket" ] && [ -z "$port" ]; then
+        METHOD="-s $socket"
+    elif [ -n "$port" ] && [ -z "$socket" ]; then
+        METHOD="-p $port"
+    else
+        echo "Either socket or port must be set in the configuration."
+        exit 1
+    fi
+
+    # Start the service
+    daemon --pidfile="$PID_FILE" "$EXEC" $METHOD \
+        -t "$max_threads" \
+        -g "$max_large_threads" \
+        -l "$log_level" \
+        -b "$treated_fale_size" \
+        -m "$log_time" \
+        -r "$scanroot_dir" \
+        -d "$quarantaine_dir" \
+        -q "$requests" \
+        -i "$PID_FILE" \
+        -e "$exclude_dir"
+
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/$PROG
+    return $RETVAL
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    if [ ! -f "$PID_FILE" ]; then
+        echo "$PROG is not running."
+        return 0
+    fi
+    killproc -p "$PID_FILE" "$EXEC"
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/$PROG
+    return $RETVAL
+}
+
+restart() {
+    stop
+    sleep 2
+    start
+}
+
+status() {
+    status -p "$PID_FILE" "$EXEC"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 2
+esac
