@@ -1,129 +1,114 @@
-#========================================================================================
-sudo apt-get -y install autoconf automake build-essential libass-dev libfreetype6-dev libsdl2-dev libtheora-dev libtool libva-dev libvdpau-dev\
- libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev pkg-config texinfo wget zlib1g-dev libfaac-dev libfdk-aac-dev libmp3lame-dev libopus-dev\
- libvpx-dev libx264-dev libx265-dev libpcre3 libpcre3-dev libssl-dev yasm git cmake mercurial ffmpeg rtmpdump
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-mkdir ~/ffmpeg_sources
-cd ~/ffmpeg_sources
-hg clone https://bitbucket.org/multicoreware/x265
-cd ~/ffmpeg_sources/x265/build/linux
-PATH="$HOME/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$HOME/ffmpeg_build" -DENABLE_SHARED:bool=off ../../source
-make
-sudo make install
+#!/bin/bash
+# ===================================================================
+# Script to Install and Configure FFmpeg, Nginx with RTMP, and Stream Video
+# ===================================================================
+#
+# This script installs and configures FFmpeg, Nginx with RTMP module, and sets up a video stream
+# from an RTSP source using FFmpeg and Nginx.
+#
+# The script will:
+# - Install required dependencies for FFmpeg and RTMP streaming.
+# - Build and install FFmpeg with necessary libraries (libx264, libx265, libfdk-aac, etc.).
+# - Set up Nginx with the RTMP module for video streaming.
+# - Configure Nginx to serve RTMP video streams and process RTSP streams.
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
 
-cd ~/ffmpeg_sources/
-git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg
-cd ~/ffmpeg_sources/ffmpeg
-PATH="$HOME/bin:$PATH" PKG_CONFIG_PATH="$HOME/ffmpeg_build/lib/pkgconfig" ./configure \
-  --prefix="$HOME/ffmpeg_build" \
-  --extra-cflags="-I$HOME/ffmpeg_build/include" \
-  --extra-ldflags="-L$HOME/ffmpeg_build/lib" \
-  --bindir="$HOME/bin" \
-  --pkg-config-flags="--static" \
-  --enable-gpl \
-  --enable-libass \
-  --enable-libfdk-aac \
-  --enable-libfreetype \
-  --enable-libmp3lame \
-  --enable-libopus \
-  --enable-libtheora \
-  --enable-libvorbis \
-  --enable-libvpx \
-  --enable-libx264 \
-  --enable-libx265 \
-  --enable-nonfree
-PATH="$HOME/bin:$PATH" make
-sudo make install
-
-ffmpeg -rtsp_transport tcp -i "rtsp://37.235.65.121:554/user=admin&password=zxcvbnm1980&channel=1&stream=0.sdp" 
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-cd ~/
-wget http://nginx.org/download/nginx-1.13.1.tar.gz
-tar -xzvf nginx-1.13.1.tar.gz
-
-git clone https://github.com/arut/nginx-rtmp-module.git
-
-cd nginx-1.13.1
-./configure --prefix=/usr --add-module=../nginx-rtmp-module/ --pid-path=/var/run/nginx.pid --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --with-http_ssl_module
-make
-sudo make install
-
-sudo cp ~/nginx-rtmp-module/stat.xsl /etc/nginx/
-
-service nginx start
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-nano /etc/nginx/nginx.conf
-<<<
-#user nginx;
-# Узнать сколько ядер в системе можно при помощи команды nproc
-worker_processes 2;
- 
-error_log /var/log/nginx/error.log warn;
-pid /var/run/nginx.pid;
- 
-events {
-  worker_connections 1024;
+# Function to install dependencies
+install_dependencies() {
+    echo "Installing dependencies..."
+    sudo apt-get -y install autoconf automake build-essential libass-dev libfreetype6-dev libsdl2-dev libtheora-dev libtool libva-dev libvdpau-dev \
+    libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev pkg-config texinfo wget zlib1g-dev libfaac-dev libfdk-aac-dev libmp3lame-dev libopus-dev \
+    libvpx-dev libx264-dev libx265-dev libpcre3 libpcre3-dev libssl-dev yasm git cmake mercurial ffmpeg rtmpdump
 }
- 
-http {
-  include /etc/nginx/mime.types;
-  default_type application/octet-stream;
- 
-  log_format main '$remote_addr - $remote_user [$time_local] "$request" '
-  '$status $body_bytes_sent "$http_referer" '
-  '"$http_user_agent" "$http_x_forwarded_for"';
- 
-  access_log /var/log/nginx/access.log main;
-  sendfile on;
-  #tcp_nopush on;
-  keepalive_timeout 65;
-  #gzip on;
- 
-  server {
-    listen 80;
-    # rtmp stat
-    location /stat {
-     rtmp_stat all;
-     rtmp_stat_stylesheet stat.xsl;
-    }
- 
-    location /stat.xsl {
-     # you can move stat.xsl to a different location
-     root /etc/nginx/;
-    }
- 
-    location / {
-     rtmp_control all;
-    }
- 
-    error_page 500 502 503 504 /50x.html;
-    location = /50x.html {
-    root html;
-  }
-  #Добавим locations для просмотра статических изображений с камеры
-  location /image/cam1/ {
-    proxy_pass "http://10.10.10.11/axis-cgi/jpg/image.cgi";
-  }
- }
- include /etc/nginx/conf.d/*.conf;
-}
- 
-rtmp {
- access_log /var/log/nginx/rtmp_access.log;
- server {
- listen 1935;
- ping 30s;
- notify_method get;
- application cam1 {
-   live on;
-   exec_static ffmpeg -re -rtsp_transport tcp -i "rtsp://37.235.65.121:554/user=admin&password=zxcvbnm1980&channel=1&stream=0.sdp" -threads 2 -f flv -r 25 -s 704x576 -an "rtmp://localhost:1935/cam1/stream0" 2>>/var/log/nginx/ffmpeg.log;
- }
- }
-}
-<<<
 
-sudo nginx -t
-service nginx start
+# Function to install x265
+install_x265() {
+    echo "Setting up FFmpeg build environment for x265..."
+    mkdir -p ~/ffmpeg_sources
+    cd ~/ffmpeg_sources
+    hg clone https://bitbucket.org/multicoreware/x265
+    cd ~/ffmpeg_sources/x265/build/linux
+    PATH="$HOME/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$HOME/ffmpeg_build" -DENABLE_SHARED:bool=off ../../source
+    make && sudo make install
+}
 
-rtmpdump -r 'rtmp://localhost:1935/cam1/stream0' -o локальный_файл.flv
+# Function to install FFmpeg
+install_ffmpeg() {
+    echo "Building and installing FFmpeg..."
+    cd ~/ffmpeg_sources/
+    git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg
+    cd ~/ffmpeg_sources/ffmpeg
+    PATH="$HOME/bin:$PATH" PKG_CONFIG_PATH="$HOME/ffmpeg_build/lib/pkgconfig" ./configure \
+      --prefix="$HOME/ffmpeg_build" \
+      --extra-cflags="-I$HOME/ffmpeg_build/include" \
+      --extra-ldflags="-L$HOME/ffmpeg_build/lib" \
+      --bindir="$HOME/bin" \
+      --pkg-config-flags="--static" \
+      --enable-gpl \
+      --enable-libass \
+      --enable-libfdk-aac \
+      --enable-libfreetype \
+      --enable-libmp3lame \
+      --enable-libopus \
+      --enable-libtheora \
+      --enable-libvorbis \
+      --enable-libvpx \
+      --enable-libx264 \
+      --enable-libx265 \
+      --enable-nonfree
+
+    make && sudo make install
+}
+
+# Function to test RTSP stream with FFmpeg
+test_rtsp_stream() {
+    echo "Testing RTSP stream with FFmpeg..."
+    ffmpeg -rtsp_transport tcp -i "rtsp://37.235.65.121:554/user=admin&password=zxcvbnm1980&channel=1&stream=0.sdp"
+}
+
+# Function to install Nginx with RTMP module
+install_nginx() {
+    echo "Installing Nginx with RTMP module..."
+    cd ~/
+    wget http://nginx.org/download/nginx-1.13.1.tar.gz
+    tar -xzvf nginx-1.13.1.tar.gz
+    git clone https://github.com/arut/nginx-rtmp-module.git
+
+    cd nginx-1.13.1
+    ./configure --prefix=/usr --add-module=../nginx-rtmp-module/ --pid-path=/var/run/nginx.pid --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --with-http_ssl_module
+    make && sudo make install
+}
+
+# Function to configure Nginx for RTMP
+configure_nginx() {
+    echo "Configuring Nginx for RTMP streaming..."
+
+    # Edit the nginx.conf file (here we assume manual editing is needed)
+    sudo cp ~/nginx-rtmp-module/stat.xsl /etc/nginx/
+
+    echo "Opening nginx.conf for editing..."
+    nano /etc/nginx/nginx.conf
+
+    # Test and restart Nginx
+    sudo nginx -t
+    sudo service nginx restart
+}
+
+# Function to stream using RTMP
+stream_rtmp() {
+    echo "Starting RTMP stream dump..."
+    rtmpdump -r 'rtmp://localhost:1935/cam1/stream0' -o rtmpdump-$(date +\%Y\%m\%d\%H\%M\%S).flv
+}
+
+# Main execution flow
+install_dependencies
+install_x265
+install_ffmpeg
+test_rtsp_stream
+install_nginx
+configure_nginx
+stream_rtmp
+
+echo "Script execution completed."
