@@ -1,23 +1,89 @@
+#!/bin/bash
+
+# ===================================================================
+# MariaDB Installation Script for Linux
+# ===================================================================
 #
-groupadd mysql
-useradd -r -g mysql mysql
+# This script installs MariaDB from source, configures necessary 
+# user permissions, and sets up the MariaDB service.
 #
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
+
+# 1. Set MariaDB version and necessary paths
+# ===================================================================
+MARIADB_VERSION="10.6.7"
+MARIADB_DOWNLOAD_URL="https://downloads.mariadb.org/interstitial/mariadb-${MARIADB_VERSION}/source/mariadb-${MARIADB_VERSION}.tar.gz"
+MARIADB_SRC_DIR="/usr/src/mariadb-${MARIADB_VERSION}"
+MARIADB_INSTALL_DIR="/usr/local/mariadb"
+MARIADB_USER="mariadb"
+MARIADB_GROUP="mariadb"
+
+# 2. Install dependencies
+# ===================================================================
+echo "Installing dependencies..."
+sudo dnf install -y cmake gcc gcc-c++ make ncurses-devel bison perl
+
+# 3. Create MariaDB user and group
+# ===================================================================
+echo "Creating MariaDB user and group..."
+sudo groupadd -f ${MARIADB_GROUP}
+sudo useradd -r -g ${MARIADB_GROUP} -M -s /bin/false ${MARIADB_USER}
+
+# 4. Download and extract MariaDB source code
+# ===================================================================
+echo "Downloading MariaDB source code..."
 cd /usr/src/
-wget http://www.mirrorservice.org/sites/ftp.mysql.com/Downloads/MySQL-5.6/mysql-5.6.13.tar.gz
-tar zxvf mysql-5.6.13.tar.gz
-cd mysql-5.6.13
-cmake -DBUILD_CONFIG=mysql_release .
-make
-make install
-#
-cd /usr/local/mysql
-chown -R mysql .
-chgrp -R mysql .
-scripts/mysql_install_db --user=mysql
-chown -R root .
-chown -R mysql data
-bin/mysqld_safe --user=mysql &
-cp support-files/mysql.server /etc/init.d/mysql.server
-#
-chown -R mysql:mysql /usr/local/mysql
-#
+if [ ! -f "mariadb-${MARIADB_VERSION}.tar.gz" ]; then
+    wget ${MARIADB_DOWNLOAD_URL}
+else
+    echo "MariaDB source archive already exists, skipping download."
+fi
+
+echo "Extracting MariaDB source code..."
+tar zxvf mariadb-${MARIADB_VERSION}.tar.gz
+
+# 5. Build and install MariaDB
+# ===================================================================
+cd ${MARIADB_SRC_DIR}
+echo "Configuring MariaDB build..."
+cmake -DCMAKE_INSTALL_PREFIX=${MARIADB_INSTALL_DIR} .
+
+echo "Building MariaDB..."
+make -j"$(nproc)"
+
+echo "Installing MariaDB..."
+sudo make install
+
+# 6. Setup MariaDB database
+# ===================================================================
+echo "Setting up MariaDB database..."
+cd ${MARIADB_INSTALL_DIR}
+sudo chown -R ${MARIADB_USER}:${MARIADB_GROUP} ${MARIADB_INSTALL_DIR}
+sudo scripts/mysql_install_db --user=${MARIADB_USER}
+
+# 7. Set up MariaDB service
+# ===================================================================
+echo "Setting up MariaDB service..."
+sudo cp support-files/mariadb.server /etc/init.d/mariadb.server
+sudo chmod +x /etc/init.d/mariadb.server
+sudo systemctl enable mariadb.server
+sudo systemctl start mariadb.server
+
+# 8. Set MariaDB permissions and ownership
+# ===================================================================
+echo "Setting permissions and ownership for MariaDB directories..."
+sudo chown -R mariadb:mariadb ${MARIADB_INSTALL_DIR}
+sudo chown -R mariadb:mariadb /var/lib/mysql
+sudo chown -R mariadb:mariadb /var/log/mariadb
+
+# 9. MariaDB installation completed
+# ===================================================================
+echo "MariaDB ${MARIADB_VERSION} installation completed successfully."
+
+# 10. MariaDB service status
+# ===================================================================
+sudo systemctl status mariadb.server
+
+# Exit
+exit 0
