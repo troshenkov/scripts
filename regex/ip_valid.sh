@@ -1,37 +1,34 @@
-#!/bin/bash
+i#!/bin/bash
 
-# Ip validator
-# Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
+# IP Address Validation Script
+# ===================================================================
+# Purpose:
+#   - Validate IP addresses using a comprehensive regular expression.
+#   - Process multiple IP addresses passed as arguments.
+#
+# Usage:
+#   - ./script_name.sh <ip_address1> <ip_address2> ...
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# ===================================================================
 
-if [[ "$?" ]] ; then
-
-ip=("$@")
-
-for ((n=0; n < ${#ip[*]}; n++)) ; do
-
-    if [[ ${ip[$n]} =~ [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-
-    OIFS=$IFS
-    IFS='.'
-    _ip=("${ip[$n]}")
-    IFS=$OIFS
-              # Error avoid: "value too great for base (error token is "09" - %%[!0]*
-        if [[ ${_ip[3]%%[!0]*} -le 255 && ${_ip[3]%%[!0]*} -le 255 && \
-              ${_ip[3]%%[!0]*} -le 255 && ${_ip[3]%%[!0]*} -le 255 ]]; then
-
-            echo IP is valid.
-
-            else
-
-                echo IP is no valid.
-
-        fi
-
-     else
-            echo IP is no valid.
-
+# Function to validate IP address
+validate_ip() {
+    local ip="$1"
+    local pattern="^(([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.){3}([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))$"
+    if [[ "$ip" =~ $pattern ]]; then
+        echo "IP address '$ip' is valid."
+    else
+        echo "IP address '$ip' is invalid."
     fi
+}
 
-done
-
+# Main script execution
+if [[ "$#" -gt 0 ]]; then
+    for ip in "$@"; do
+        validate_ip "$ip"
+    done
+else
+    echo "No IP addresses provided. Usage: $0 <ip_address1> <ip_address2> ..."
 fi
