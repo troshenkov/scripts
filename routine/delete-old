@@ -1,5 +1,29 @@
 #!/bin/bash
-find /tmp -mtime +10 -name "GeoLiteCity.dat.gz.*" -exec rm -f {} \;
-#find /var/log -mtime +30 -name "*.bz2" -exec rm -f {} \;
-find /var/log -mtime +30 -name "*.bz2" -exec rm -f {} \;
-find /srv/ftp/web/backups -mtime +180 \( -name "*.sql.gz" -o -name "*.tgz" \) -exec rm -f {} \;
+
+# Cleanup Script: Delete Old Files
+# --------------------------------
+# This script removes old files from specific directories based on their age.
+# 
+# Directories and cleanup rules:
+# - /tmp: Remove GeoLiteCity.dat.gz.* files older than 10 days
+# - /var/log: Remove .bz2 log files older than 30 days
+# - /srv/ftp/web/backups: Remove .sql.gz and .tgz backup files older than 180 days
+#
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+# Last Updated: <Date>
+
+# Configuration
+TMP_DIR="/tmp"
+LOG_DIR="/var/log"
+BACKUP_DIR="/srv/ftp/web/backups"
+
+# Remove GeoLiteCity temporary files older than 10 days
+find "$TMP_DIR" -type f -mtime +10 -name "GeoLiteCity.dat.gz.*" -exec rm -f {} +
+
+# Remove compressed log files older than 30 days
+find "$LOG_DIR" -type f -mtime +30 -name "*.bz2" -exec rm -f {} +
+
+# Remove old backups older than 180 days
+find "$BACKUP_DIR" -type f -mtime +180 \( -name "*.sql.gz" -o -name "*.tgz" \) -exec rm -f {} +
+
+exit 0
