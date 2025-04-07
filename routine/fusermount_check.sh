@@ -1,35 +1,67 @@
 #!/bin/bash
+# ------------------------------------------------------------------------------
+# SSHFS Connection Monitor & Auto-Recovery Script
+# Author: Dmitry Troshenkov (troshenkov.d@gmail.com)
+#
+# Description:
+#   This script checks the SSHFS connection to a remote backup server.
+#   If the connection is lost, it attempts to remount the backup directory.
+#   Logs events and sends an email notification if issues occur.
+#
+# Usage:
+#   ./sshfs_monitor.sh
+#
+# Features:
+#   - Checks if SSHFS is mounted.
+#   - Attempts auto-recovery if disconnected.
+#   - Logs connection status and errors.
+#   - Sends an email alert on failures.
+#
+# Dependencies:
+#   - SSHFS
+#   - mailx (for email notifications)
+#
+# Configuration:
+#   - Set USER, B_DIR, B_HOST, and EMAIL as needed.
+#   - Adjust the log file path if required.
+#
+# Exit Codes:
+#   0 - Script executed successfully.
+#
+# Example:
+#   ./sshfs_monitor.sh
+#
+# ------------------------------------------------------------------------------
 
-# Dmitry Troshenkov (troshenkov.d@gmail.com)
-# This script checks sshfs connection, restore it if required and sends a warning log to email.
-
+# Variables
 USER='u82225'
-
 B_DIR='/mnt/backup'
 B_HOST='your-backup-server.tld'
 EMAIL='your@mail.tld'
+LOG_FILE="/var/log/sshfs_monitor.log"
 
-modprobe fuse
-test -d $B_DIR || mkdir -p $B_DIR
-b_test=`df | grep $B_HOST`
+# Load FUSE module
+modprobe fuse 2>/dev/null || echo "[$(date)] - Warning: Failed to load fuse module" >> "$LOG_FILE"
 
-if [ -z "$b_test" ] || [ ! -d $B_DIR ]; then
+# Ensure backup directory exists
+mkdir -p "$B_DIR"
 
-	fusermount -u $B_DIR
-	echo Host $B_HOST has lost connection >> MESSAGE
-	echo `date` >> MESSAGE
-	echo 'try to fix' >> MESSAGE
+# Check if SSHFS is mounted
+if ! mountpoint -q "$B_DIR"; then
+    fusermount -u "$B_DIR" 2>/dev/null
+    echo "[$(date)] - Lost connection to $B_HOST, attempting reconnect..." | tee -a "$LOG_FILE"
 
-	#
-	sshfs -o reconnect $USER@$USER.$B_HOST:/ $B_DIR
-	#
+    # Attempt to remount
+    sshfs -o reconnect "$USER@$B_HOST:/" "$B_DIR"
 
-	echo 'result: ' `df | grep $B_HOST` >> MESSAGE 
-
-	cat MESSAGE | mailx -s "Warning Check mount  on `hostname` (`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`)" ${EMAIL}
-	rm MESSAGE
-
+    # Verify successful mount
+    if mountpoint -q "$B_DIR"; then
+        echo "[$(date)] - Successfully reconnected to $B_HOST" | tee -a "$LOG_FILE"
+    else
+        echo "[$(date)] - ERROR: Failed to reconnect to $B_HOST" | tee -a "$LOG_FILE"
+        echo -e "Subject: [ALERT] SSHFS Mount Issue on $(hostname)\n\n$(cat "$LOG_FILE")" | sendmail "$EMAIL"
+    fi
 fi
 
-
 exit 0
+
