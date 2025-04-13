@@ -126,7 +126,7 @@ for i, q in enumerate(questions):
         break
 
 # Show summary
-print("\n📋 Your Quiz Summary:")
+print("\nYour Quiz Summary:")
 for idx, (question, response) in enumerate(responses, 1):
     print(f"{idx}. {question}")
     print(f"   ➤ Your answer: {response}\n")
